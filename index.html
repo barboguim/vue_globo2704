@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reviver Centro · Niterói</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,wght@0,200;0,300;0,400;0,600;0,700;1,300&display=swap" rel="stylesheet">
+
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <link  href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    :root {
+      --bg:       #f2efe9;
+      --surface:  #ffffff;
+      --card-bg:  rgba(255,255,255,0.94);
+      --border:   rgba(0,0,0,0.07);
+      --border-hi:rgba(0,0,0,0.14);
+      --text-hi:  #18160f;
+      --text-md:  #6a6560;
+      --text-lo:  #aea9a2;
+      --red:      #c43a18;
+      --font:     'Nunito Sans', system-ui, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+    body { background:var(--bg); color:var(--text-hi); font-family:var(--font); -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+
+    /* ══ HERO ═══════════════════════════════════════════════ */
+    #hero { position:relative; height:100vh; display:flex; flex-direction:column; justify-content:flex-end; padding:0 7vw 10vh; overflow:hidden; background:#14110d; isolation:isolate; }
+
+    /* video fills hero, nudged up to crop subtitle bar */
+    #hero-video {
+      position:absolute; inset:0;
+      width:100%; height:110%; top:-5%;
+      object-fit:cover; z-index:0; display:block;
+    }
+
+    /* single thin scrim: dark-left for text legibility, transparent right */
+    .hero-scrim {
+      position:absolute; inset:0; z-index:1; pointer-events:none;
+      background:
+        linear-gradient(to right, rgba(0,0,0,0.58) 0%, rgba(0,0,0,0.22) 55%, rgba(0,0,0,0.04) 100%),
+        linear-gradient(to top,   rgba(0,0,0,0.48) 0%, transparent 40%);
+    }
+
+    .hero-content { position:relative; z-index:2; }
+
+    .hero-eyebrow { font-size:9.5px; font-weight:700; letter-spacing:.26em; text-transform:uppercase; color:#e8723a; margin-bottom:1.5rem; display:flex; align-items:center; gap:10px; }
+    .hero-eyebrow::before { content:''; width:22px; height:1.5px; background:#e8723a; }
+
+    h1.hero-title { font-size:clamp(4.2rem,10.5vw,9rem); font-weight:200; line-height:.88; letter-spacing:-0.03em; color:#f2ede5; margin-bottom:2.2rem; }
+    h1.hero-title strong { font-weight:700; display:block; }
+
+    .hero-sub { font-size:1.05rem; font-weight:300; color:rgba(242,237,229,0.70); max-width:400px; line-height:1.9; margin-bottom:2.8rem; }
+
+    .scroll-cue { display:flex; align-items:center; gap:9px; font-size:8.5px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:rgba(242,237,229,0.38); }
+    .scroll-line { width:30px; height:1px; background:rgba(242,237,229,0.38); transform-origin:left; animation:grow 2.4s ease-in-out infinite; }
+    @keyframes grow { 0%,100%{transform:scaleX(1);opacity:.4;} 50%{transform:scaleX(1.8);opacity:1;} }
+
+    .hero-stats { position:absolute; right:7vw; bottom:10vh; z-index:2; display:flex; flex-direction:column; gap:1.8rem; text-align:right; }
+    .hs-val { font-size:2rem; font-weight:700; color:#e8723a; line-height:1; }
+    .hs-lbl { font-size:8px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:rgba(242,237,229,0.38); margin-top:4px; }
+
+    /* ══ SCROLLYTELLING ═════════════════════════════════════ */
+    #scrolly { position:relative; }
+    #map-wrap { position:sticky; top:0; height:100vh; width:100%; z-index:0; }
+    #map { width:100%; height:100%; }
+    #chapters { position:relative; margin-top:-100vh; z-index:10; pointer-events:none; }
+
+    /* ── Card chapter ── */
+    .chapter { min-height:100vh; display:flex; align-items:center; padding:2rem 2rem 2rem 5vw; pointer-events:none; transition:opacity .5s; opacity:.15; }
+    .chapter.active { opacity:1; }
+    /* panels and image chapters have solid backgrounds — never dim them */
+    .chapter.panel-chapter, .chapter.img-chapter { opacity:1 !important; }
+
+    .card { pointer-events:auto; width:310px; background:var(--card-bg); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); border:1px solid var(--border); border-radius:12px; padding:1.6rem 1.5rem 1.4rem; box-shadow:0 6px 30px rgba(0,0,0,.08),0 1px 4px rgba(0,0,0,.04); position:relative; overflow:hidden; transition:border-color .4s,box-shadow .4s; }
+    .card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,var(--red) 0%,transparent 75%); opacity:0; transition:opacity .5s; }
+    .chapter.active .card { border-color:var(--border-hi); box-shadow:0 12px 50px rgba(0,0,0,.12); }
+    .chapter.active .card::before { opacity:1; }
+
+    .card-tag { font-size:8.5px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--red); margin-bottom:.6rem; }
+    .card-title { font-size:1.25rem; font-weight:300; line-height:1.22; color:var(--text-hi); margin-bottom:.7rem; letter-spacing:-.01em; }
+    .card-body { font-size:.8rem; font-weight:300; line-height:1.85; color:var(--text-md); }
+
+    /* highlighted number inside card body */
+    .card-body strong { font-weight:700; color:var(--text-hi); font-size:.95rem; }
+
+    .card-source { margin-top:.75rem; font-size:7px; letter-spacing:.05em; color:var(--text-lo); border-top:1px solid var(--border); padding-top:.5rem; line-height:1.6; }
+
+    /* ── Full-screen panel chapter ── */
+    .chapter.panel-chapter { min-height:100vh; padding:0; display:flex; align-items:stretch; }
+    .panel { pointer-events:auto; width:100%; min-height:100vh; background:var(--surface); display:flex; flex-direction:column; justify-content:center; padding:8vh 8vw; position:relative; overflow:hidden; }
+    .panel::after { content:''; position:absolute; top:0; right:0; width:40%; height:100%; background:linear-gradient(135deg,transparent 40%,rgba(196,58,24,0.025) 100%); pointer-events:none; }
+
+    .panel-eyebrow { font-size:9px; font-weight:700; letter-spacing:.26em; text-transform:uppercase; color:var(--red); margin-bottom:2rem; display:flex; align-items:center; gap:10px; }
+    .panel-eyebrow::before { content:''; width:20px; height:1.5px; background:var(--red); }
+
+    .panel-title { font-size:clamp(1.8rem,3.8vw,3rem); font-weight:200; line-height:1.08; color:var(--text-hi); margin-bottom:.7rem; letter-spacing:-.025em; max-width:620px; }
+    .panel-title strong { font-weight:700; }
+
+    .panel-lead { font-size:1.05rem; font-weight:300; color:var(--text-md); max-width:520px; line-height:1.9; margin-bottom:3rem; }
+
+    /* ── Metrics grid ── */
+    .metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:0; border-top:1px solid var(--border); margin-bottom:3rem; max-width:860px; }
+    .metric { padding:1.75rem 1.5rem 1.75rem 0; border-bottom:1px solid var(--border); border-right:1px solid var(--border); }
+    .metric:nth-child(3n) { border-right:none; }
+    /* Big red number, unit in smaller weight */
+    .metric-val { font-size:clamp(2.2rem,4.8vw,4rem); font-weight:700; color:var(--red); line-height:1; letter-spacing:-.03em; margin-bottom:.5rem; }
+    .metric-val span { font-size:.55em; font-weight:200; color:var(--text-md); }
+    .metric-name { font-size:8.5px; font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:var(--text-lo); line-height:1.65; }
+
+    /* ── Project list ── */
+    .project-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:1.5rem; max-width:860px; }
+    .project-item { border-left:2px solid var(--border); padding-left:1.1rem; transition:border-color .3s; }
+    .project-item:hover { border-color:var(--red); }
+    /* bigger, bolder project values */
+    .project-val { font-size:1.7rem; font-weight:700; color:var(--red); line-height:1; margin-bottom:.35rem; letter-spacing:-.02em; }
+    .project-name { font-size:8.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--text-lo); margin-bottom:.4rem; }
+    .project-note { font-size:.9rem; font-weight:300; color:var(--text-md); line-height:1.7; }
+
+    .panel-source { font-size:7px; letter-spacing:.06em; color:var(--text-lo); border-top:1px solid var(--border); padding-top:1rem; margin-top:2rem; max-width:860px; line-height:1.7; }
+
+    /* ── Image chapter ── */
+    .chapter.img-chapter { padding:0; min-height:100vh; align-items:stretch; }
+    .img-inner { pointer-events:auto; display:flex; width:100%; min-height:100vh; }
+    .img-card-col { flex-shrink:0; width:300px; padding:2rem 1.75rem 2rem 5vw; display:flex; align-items:center; background:rgba(242,239,233,0.78); backdrop-filter:blur(8px); }
+    .img-panel { flex:1; position:relative; overflow:hidden; }
+    .img-panel img { width:100%; height:100%; object-fit:cover; display:block; }
+    .img-placeholder { width:100%; height:100%; background:rgba(0,0,0,.03); border-left:1px solid var(--border); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.75rem; }
+    .img-placeholder-lbl { font-size:8.5px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--text-lo); }
+    .img-placeholder-path { font-family:monospace; font-size:9px; color:var(--text-lo); opacity:.6; }
+    .img-caption { position:absolute; bottom:1rem; right:1rem; font-size:7.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(0,0,0,.3); }
+
+    #chap-end { height:30vh; pointer-events:none; }
+
+    /* ── Nav dots with labels ── */
+    #nav-dots { position:fixed; right:1rem; top:50%; transform:translateY(-50%); z-index:60; display:none; flex-direction:column; gap:0; background:rgba(255,255,255,.92); padding:5px 0; border-radius:18px; border:1px solid var(--border); backdrop-filter:blur(12px); box-shadow:0 3px 18px rgba(0,0,0,.07); }
+    #nav-dots.on { display:flex; }
+    .dot-row { display:flex; align-items:center; gap:7px; padding:5px 10px 5px 8px; cursor:pointer; border:none; background:transparent; border-radius:10px; transition:background .2s; }
+    .dot-row:hover { background:rgba(0,0,0,.04); }
+    .dot-pip { width:5px; height:5px; border-radius:50%; flex-shrink:0; background:var(--text-lo); transition:all .3s; }
+    .dot-row.active .dot-pip { background:var(--red); transform:scale(1.5); }
+    .dot-lbl { font-size:7.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-lo); transition:color .3s; white-space:nowrap; }
+    .dot-row.active .dot-lbl { color:var(--red); }
+
+    /* ══ 3D / ArcGIS ════════════════════════════════════════ */
+    #scene-3d { position:relative; height:100vh; overflow:hidden; background:#0c0f14; }
+    #scene-3d iframe { width:100%; height:100%; border:none; display:block; }
+    .scene-mask-top    { position:absolute; top:0;    left:0; right:0; z-index:10; height:56px; background:#0c0f14; pointer-events:none; }
+    .scene-mask-bottom { position:absolute; bottom:0; left:0; right:0; z-index:10; height:44px; background:#0c0f14; pointer-events:none; }
+    .scene-bar { position:absolute; top:0; left:0; right:0; z-index:20; padding:1.1rem 1.75rem; display:flex; align-items:center; justify-content:space-between; pointer-events:none; }
+    .scene-tag { font-size:9px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--red); display:flex; align-items:center; gap:7px; }
+    .scene-tag::before { content:''; width:5px; height:5px; border-radius:50%; background:var(--red); animation:pdot 2s ease-in-out infinite; }
+    @keyframes pdot { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+    .scene-source { font-size:8.5px; font-weight:300; letter-spacing:.08em; color:rgba(255,255,255,.28); }
+    .scene-card { position:absolute; bottom:56px; left:5vw; z-index:20; width:270px; background:rgba(12,15,20,0.88); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.09); border-radius:10px; padding:1.3rem 1.3rem 1.1rem; pointer-events:none; }
+    .scene-card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,var(--red),transparent 80%); }
+    .scene-card .card-tag { color:#e05030; }
+    .scene-card .card-title { color:rgba(255,255,255,.85); font-size:1rem; }
+    .scene-card .card-body  { color:rgba(255,255,255,.42); font-size:.73rem; }
+    #scene-loader { position:absolute; inset:0; z-index:15; background:#0c0f14; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.2rem; transition:opacity .9s ease .6s; }
+    #scene-loader.done { opacity:0; pointer-events:none; }
+    .spin-ring { width:34px; height:34px; border:1.5px solid rgba(255,255,255,0.1); border-top-color:var(--red); border-radius:50%; animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spin-lbl { font-size:8.5px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.28); }
+
+    /* ══ MapLibre chrome ════════════════════════════════════ */
+    .maplibregl-ctrl-attrib { font-size:9px !important; }
+    .maplibregl-ctrl-group { background:rgba(255,255,255,.9) !important; border:1px solid var(--border) !important; backdrop-filter:blur(8px); box-shadow:0 2px 8px rgba(0,0,0,.06) !important; }
+    .maplibregl-ctrl button { background:transparent !important; }
+    .pin { width:10px; height:10px; border-radius:50%; background:var(--red); border:2px solid white; box-shadow:0 0 0 4px rgba(196,58,24,.22); animation:ppulse 2.4s ease-in-out infinite; }
+    @keyframes ppulse { 0%,100%{box-shadow:0 0 0 4px rgba(196,58,24,.22);} 50%{box-shadow:0 0 0 12px rgba(196,58,24,0);} }
+
+    @media(max-width:640px){
+      .hero-stats{display:none;}
+      h1.hero-title{font-size:3.5rem;}
+      .card,.img-card-col{width:calc(100vw - 2.5rem);}
+      .img-inner{flex-direction:column;}
+      .img-panel{height:50vw;flex:none;width:100%;}
+      .dot-lbl{display:none;}
+      .metrics{grid-template-columns:1fr 1fr;}
+      .metric:nth-child(2n){border-right:none;}
+      .metric:nth-child(3n){border-right:1px solid var(--border);}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ HERO ═══════════════════════════════════════════════ -->
+<section id="hero">
+  <video id="hero-video" autoplay muted loop playsinline>
+    <source src="assets/hero.mp4" type="video/mp4">
+  </video>
+  <div class="hero-scrim"></div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">Niterói &nbsp;·&nbsp; Área Central</p>
+    <h1 class="hero-title">Reviver<br><strong>Centro</strong></h1>
+    <p class="hero-sub">Programa de requalificação urbana do centro de Niterói — acelerando investimentos e conectando oportunidades que moldam o futuro da área central.</p>
+    <div class="scroll-cue"><span class="scroll-line"></span>Explorar</div>
+  </div>
+  <div class="hero-stats">
+    <div><p class="hs-val">R$ 420 mi</p><p class="hs-lbl">Invest. municipal</p></div>
+    <div><p class="hs-val">R$ 455 mi</p><p class="hs-lbl">PAC · VLT federal</p></div>
+    <div><p class="hs-val">197.848</p><p class="hs-lbl">Vínculos formais</p></div>
+  </div>
+</section>
+
+<!-- ══ SCROLLYTELLING ════════════════════════════════════ -->
+<section id="scrolly">
+  <div id="map-wrap"><div id="map"></div></div>
+  <div id="chapters">
+
+    <!-- 0 · PANEL · Projetos âncora — FIRST SECTION -->
+    <div class="chapter panel-chapter" data-i="0" data-label="Projetos">
+      <div class="panel">
+        <p class="panel-eyebrow">Projetos Âncora · 2024–2028</p>
+        <h2 class="panel-title">Projetos que estão<br><strong>transformando a área Central</strong></h2>
+        <p class="panel-lead">Quatro intervenções estruturantes em andamento ou com entrega prevista até 2028.</p>
+        <div class="project-list">
+          <div class="project-item">
+            <p class="project-val">R$ 78,9 mi</p>
+            <p class="project-name">Requalificação viária</p>
+            <p class="project-note">Av. Amaral Peixoto, Rua da Conceição, Rua Dr. Celestino e Praça da República. Conclusão: 2º sem. 2027.</p>
+          </div>
+          <div class="project-item">
+            <p class="project-val">2.800 lugares</p>
+            <p class="project-name">Arena Niterói</p>
+            <p class="project-note">Arena multiuso no Centro. Entrega prevista: 1º semestre de 2026.</p>
+          </div>
+          <div class="project-item">
+            <p class="project-val">2º sem. 2026</p>
+            <p class="project-name">Distrito de Inovação</p>
+            <p class="project-note">Hub com universidades e centro de computação quântica na Cantareira.</p>
+          </div>
+          <div class="project-item">
+            <p class="project-val">1.153 ativos</p>
+            <p class="project-name">Aluguel Universitário</p>
+            <p class="project-note">R$ 700/mês por contrato. Meta: 4.000 contratos ativos até 2028.</p>
+          </div>
+        </div>
+        <p class="panel-source">Fontes: Prefeitura de Niterói, nov. 2024 / fev. 2025 / mar. 2026</p>
+      </div>
+    </div>
+
+    <!-- 1 · CARD · Obras — map zooms to Amaral Peixoto, streets highlighted -->
+    <div class="chapter" data-i="1" data-label="Obras">
+      <div class="card">
+        <p class="card-tag">Obras · Av. Amaral Peixoto</p>
+        <h2 class="card-title">R$ 78,9 mi em requalificação viária</h2>
+        <p class="card-body">
+          Av. Amaral Peixoto, Rua da Conceição, Rua Dr. Celestino e
+          Praça da República recebem obras de calçamento, drenagem e
+          arborização. Conclusão prevista para o <strong>2º semestre de 2027</strong>.
+        </p>
+        <p class="card-source">Fonte: Prefeitura de Niterói, fev. 2022 / fev. 2025</p>
+      </div>
+    </div>
+
+    <!-- 2 · IMAGE · Sistema Viário -->
+    <div class="chapter img-chapter" data-i="2" data-label="Viário">
+      <div class="img-inner">
+        <div class="img-card-col">
+          <div class="card">
+            <p class="card-tag">Mobilidade Urbana</p>
+            <h2 class="card-title">Sistema viário proposto</h2>
+            <p class="card-body">Nova hierarquia viária integra mobilidade ativa, ciclovias e espaços de convivência, conectando as intervenções da Amaral Peixoto ao VLT e à frente marítima.</p>
+            <p class="card-source">Fonte: GeoNiterói / Prefeitura · 2024</p>
+          </div>
+        </div>
+        <div class="img-panel">
+          <img src="https://raw.githubusercontent.com/barboguim/vue_globo2704/main/assets/Mapa%20Base_Sistema_Vi%C3%A1rio_Proposto.png" alt="Sistema Viário Proposto" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <div class="img-placeholder" style="display:none"><span class="img-placeholder-lbl">Aguardando imagem</span><span class="img-placeholder-path">Mapa Base_Sistema_Viário_Proposto.png</span></div>
+          <div class="img-caption">Sistema Viário Proposto · Centro de Niterói</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 · IMAGE · Imóveis de Interesse (NEW) -->
+    <div class="chapter img-chapter" data-i="3" data-label="Imóveis">
+      <div class="img-inner">
+        <div class="img-card-col">
+          <div class="card">
+            <p class="card-tag">Oportunidades</p>
+            <h2 class="card-title">Imóveis de interesse estratégico</h2>
+            <p class="card-body">Levantamento de lotes e edificações com potencial para retrofit, uso misto e habitação de interesse social na área central de Niterói.</p>
+            <p class="card-source">Fonte: GeoNiterói / Prefeitura · 2024</p>
+          </div>
+        </div>
+        <div class="img-panel">
+          <img src="https://raw.githubusercontent.com/barboguim/vue_globo2704/main/assets/Mapa_Base_Im%C3%B3veis_de_Interesse.png" alt="Imóveis de Interesse" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <div class="img-placeholder" style="display:none"><span class="img-placeholder-lbl">Aguardando imagem</span><span class="img-placeholder-path">Mapa_Base_Imóveis_de_Interesse.png</span></div>
+          <div class="img-caption">Imóveis de Interesse · Centro de Niterói</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 · IMAGE · Corredores Verdes -->
+    <div class="chapter img-chapter" data-i="4" data-label="Verde">
+      <div class="img-inner">
+        <div class="img-card-col">
+          <div class="card">
+            <p class="card-tag">Infraestrutura Verde</p>
+            <h2 class="card-title">Corredores verdes</h2>
+            <p class="card-body">Corredores ecológicos identificados na área central. Ativo estratégico para mitigação de ilhas de calor e drenagem sustentável no Centro de Niterói.</p>
+            <p class="card-source">Fonte: GeoNiterói / Prefeitura · 2024</p>
+          </div>
+        </div>
+        <div class="img-panel">
+          <img src="https://raw.githubusercontent.com/barboguim/vue_globo2704/main/assets/Mapa%20Base_corredores_verdes.png" alt="Corredores Verdes" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <div class="img-placeholder" style="display:none"><span class="img-placeholder-lbl">Aguardando imagem</span><span class="img-placeholder-path">Mapa Base_corredores_verdes.png</span></div>
+          <div class="img-caption">Corredores Verdes · Centro de Niterói</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 · CARD · Emprego -->
+    <div class="chapter" data-i="5" data-label="Emprego">
+      <div class="card">
+        <p class="card-tag">Mercado de Trabalho · RAIS 2023</p>
+        <h2 class="card-title">O Centro concentra 35% dos empregos formais de Niterói</h2>
+        <p class="card-body">
+          <strong>197.848</strong> vínculos formais ativos em Niterói, em <strong>15.690</strong> estabelecimentos. Cerca de <strong>69 mil</strong> vínculos estão em CEPs do bairro Centro — a maior concentração da cidade. <strong>54%</strong> dos estabelecimentos são do Simples Nacional.
+        </p>
+        <p class="card-source">Fonte: RAIS 2023 — MTE · Município 330330 (Niterói)</p>
+      </div>
+    </div>
+
+    <!-- 6 · PANEL · Setores -->
+    <div class="chapter panel-chapter" data-i="6" data-label="Setores">
+      <div class="panel">
+        <p class="panel-eyebrow">Estrutura Setorial · RAIS 2023</p>
+        <h2 class="panel-title"><strong>197.848</strong> vínculos<br>em Niterói</h2>
+        <p class="panel-lead">Distribuídos em 15.690 estabelecimentos. Os maiores setores empregadores do município.</p>
+        <div class="metrics">
+          <div class="metric">
+            <p class="metric-val">44.434<span>&nbsp;vínculos</span></p>
+            <p class="metric-name">Serviços técnicos<br>e imobiliários · 22,5%</p>
+          </div>
+          <div class="metric">
+            <p class="metric-val">31.096<span>&nbsp;vínculos</span></p>
+            <p class="metric-name">Comércio<br>varejista · 15,7%</p>
+          </div>
+          <div class="metric">
+            <p class="metric-val">22.894<span>&nbsp;vínculos</span></p>
+            <p class="metric-name">Aliment. e<br>alojamento · 11,6%</p>
+          </div>
+          <div class="metric">
+            <p class="metric-val">19.392<span>&nbsp;vínculos</span></p>
+            <p class="metric-name">Ensino<br>· 9,8%</p>
+          </div>
+          <div class="metric">
+            <p class="metric-val">18.526<span>&nbsp;vínculos</span></p>
+            <p class="metric-name">Saúde e serviços<br>médicos · 9,4%</p>
+          </div>
+          <div class="metric">
+            <p class="metric-val">11.142<span>&nbsp;estab.</span></p>
+            <p class="metric-name">Micro e pequenas<br>empresas (1–9 func.)</p>
+          </div>
+        </div>
+        <p class="panel-source">Fonte: RAIS 2023 — MTE · IBGE Subsetor · Município 330330 (Niterói)</p>
+      </div>
+    </div>
+
+    <div id="chap-end"></div>
+  </div>
+</section>
+
+<!-- ══ 3D ARCGIS ══════════════════════════════════════════ -->
+<section id="scene-3d">
+  <div id="scene-loader"><div class="spin-ring"></div><p class="spin-lbl">Carregando cena 3D</p></div>
+  <iframe id="arcgis-frame" allowfullscreen allow="geolocation" title="3D GeoNiterói"></iframe>
+  <div class="scene-mask-top"></div>
+  <div class="scene-mask-bottom"></div>
+  <div class="scene-bar">
+    <span class="scene-tag">Volumetria 3D · Centro de Niterói</span>
+    <span class="scene-source">GeoNiterói · ArcGIS Scene Viewer · gabarito real</span>
+  </div>
+  <div class="scene-card">
+    <p class="card-tag">Gabarito Urbano</p>
+    <h2 class="card-title">Edificações por altura real</h2>
+    <p class="card-body">Dados GeoNiterói / Prefeitura de Niterói. Arraste para explorar, scroll para ampliar.</p>
+  </div>
+</section>
+
+<div id="nav-dots"></div>
+
+<!-- ══ JAVASCRIPT ═════════════════════════════════════════ -->
+<script>
+/*
+  Street coordinates — derived from Wikipedia description + map screenshot analysis:
+
+  Av. Ernani do Amaral Peixoto runs NE→SW:
+    NE end (Praça da República side): approx -22.9013, -43.1164
+    SW end (Praça Arariboia / waterfront): approx -22.8950, -43.1303
+
+  The avenue is roughly 1.1 km long, bearing ~240° (SW).
+  Intermediate nodes spaced ~200m apart along that bearing.
+
+  Rua da Conceição runs roughly N–S, parallel and east of the avenue.
+  Rua Dr. Celestino runs NW–SE, shorter cross-street near Praça da República.
+
+  All nodes verified against the Positron basemap visible in the screenshot:
+  waterfront is to the NW, Praça da República is toward the SE/right,
+  Praça Arariboia (ferry terminal) is at the NW waterfront end.
+*/
+const CHAPTERS = [
+  // 0 — panel: overview
+  { center:[-43.1189,-22.8938], zoom:14.2, pitch:25, bearing:-5,  marker:null,  streets:false },
+  // 1 — obras: centred on avenue, bearing follows its NW direction
+  { center:[-43.1189,-22.8938], zoom:16.5, pitch:52, bearing:-75, marker:[-43.1171,-22.8940], streets:true  },
+  // 2, 3, 4 — image chapters
+  { center:[-43.1189,-22.8938], zoom:13.8, pitch:15, bearing:0,   marker:null,  streets:false },
+  { center:[-43.1189,-22.8938], zoom:13.8, pitch:15, bearing:0,   marker:null,  streets:false },
+  { center:[-43.1189,-22.8938], zoom:13.8, pitch:15, bearing:0,   marker:null,  streets:false },
+  // 5 — emprego
+  { center:[-43.1189,-22.8938], zoom:15.0, pitch:35, bearing:-10, marker:null,  streets:false },
+  // 6 — setores panel
+  { center:[-43.1189,-22.8938], zoom:14.2, pitch:25, bearing:-5,  marker:null,  streets:false },
+];
+
+const NAV_LABELS = ['Projetos','Obras','Viário','Imóveis','Verde','Emprego','Setores'];
+
+/*
+  Coordinates built from exact user-provided anchor points:
+    Praça da República:   lat -22.893966, lng -43.117060
+    Av. Amaral Peixoto:   lat -22.893588, lng -43.118492  (point on avenue)
+    Rua da Conceição:     lat -22.894319, lng -43.120627  (point on street)
+    Rua Dr. Celestino:    lat -22.895495, lng -43.114319  (point on street)
+
+  Avenue direction: vector República → AP point = (+0.000485 lat, -0.001837 lng) per 200m step.
+  Extended 2 steps SE and 4 steps NW from República.
+  Cross streets: N-S segments (±0.003° lat) through their anchor points.
+*/
+const STREETS_GEOJSON = {
+  type:'FeatureCollection',
+  features:[
+    {
+      type:'Feature',
+      properties:{ name:'Av. Ernani do Amaral Peixoto' },
+      geometry:{
+        type:'LineString',
+        coordinates:[
+          [-43.113386, -22.894936],  // SE end
+          [-43.115223, -22.894451],
+          [-43.117060, -22.893966],  // Praça da República
+          [-43.118897, -22.893481],  // user anchor point on avenue
+          [-43.120734, -22.892996],
+          [-43.122571, -22.892511],
+          [-43.124408, -22.892026]   // NW end (toward Arariboia)
+        ]
+      }
+    },
+    {
+      type:'Feature',
+      properties:{ name:'Rua da Conceição' },
+      geometry:{
+        type:'LineString',
+        coordinates:[
+          [-43.120627, -22.891319],  // N end
+          [-43.120627, -22.892819],
+          [-43.120627, -22.894319],  // user anchor point
+          [-43.120627, -22.895819],
+          [-43.120627, -22.897319]   // S end
+        ]
+      }
+    },
+    {
+      type:'Feature',
+      properties:{ name:'Rua Dr. Celestino' },
+      geometry:{
+        type:'LineString',
+        coordinates:[
+          [-43.114319, -22.892495],  // N end
+          [-43.114319, -22.893995],
+          [-43.114319, -22.895495],  // user anchor point
+          [-43.114319, -22.896995],
+          [-43.114319, -22.898495]   // S end
+        ]
+      }
+    },
+    {
+      type:'Feature',
+      properties:{ name:'Praça da República' },
+      geometry:{ type:'Point', coordinates:[-43.117060, -22.893966] }
+    }
+  ]
+};
+
+/* ── Map ───────────────────────────────────────── */
+const map = new maplibregl.Map({
+  container:'map',
+  style:'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  center:[-43.1189,-22.8938], zoom:14.2, pitch:25, bearing:-5,
+  antialias:true
+});
+map.addControl(new maplibregl.NavigationControl({ showCompass:true }), 'bottom-right');
+
+let streetLayerAdded = false;
+
+map.on('load', () => {
+  map.addSource('streets', { type:'geojson', data:STREETS_GEOJSON });
+
+  // Glow behind
+  map.addLayer({ id:'st-glow', type:'line', source:'streets', filter:['==','$type','LineString'],
+    layout:{ 'line-cap':'round','line-join':'round' },
+    paint:{ 'line-color':'#c43a18','line-width':14,'line-opacity':0,'line-blur':8 }
+  });
+  // Core line
+  map.addLayer({ id:'st-line', type:'line', source:'streets', filter:['==','$type','LineString'],
+    layout:{ 'line-cap':'round','line-join':'round' },
+    paint:{ 'line-color':'#c43a18','line-width':3.5,'line-opacity':0 }
+  });
+  // Place dot
+  map.addLayer({ id:'st-dot', type:'circle', source:'streets', filter:['==','$type','Point'],
+    paint:{ 'circle-radius':7,'circle-color':'#c43a18','circle-stroke-width':2,'circle-stroke-color':'#ffffff','circle-opacity':0,'circle-stroke-opacity':0 }
+  });
+
+  streetLayerAdded = true;
+});
+
+function setStreets(on) {
+  if (!streetLayerAdded) return;
+  map.setPaintProperty('st-line','line-opacity', on ? 1 : 0);
+  map.setPaintProperty('st-glow','line-opacity', on ? 0.38 : 0);
+  map.setPaintProperty('st-dot','circle-opacity', on ? 1 : 0);
+  map.setPaintProperty('st-dot','circle-stroke-opacity', on ? 1 : 0);
+}
+
+/* ── Pin ────────────────────────────────────────── */
+let pin = null;
+function setPin(lngLat) {
+  if (pin) { pin.remove(); pin = null; }
+  if (!lngLat) return;
+  const el = document.createElement('div'); el.className = 'pin';
+  pin = new maplibregl.Marker({ element:el }).setLngLat(lngLat).addTo(map);
+}
+
+/* ── flyTo ──────────────────────────────────────── */
+let flyTimer;
+function flyTo(i) {
+  clearTimeout(flyTimer);
+  flyTimer = setTimeout(() => {
+    const c = CHAPTERS[i];
+    map.flyTo({ center:c.center, zoom:c.zoom, pitch:c.pitch, bearing:c.bearing,
+      duration:2600, essential:true, easing:t=>t<.5?2*t*t:-1+(4-2*t)*t });
+    setPin(c.marker);
+    setStreets(c.streets);
+  }, 80);
+}
+
+/* ── Nav dots ───────────────────────────────────── */
+const chapEls = document.querySelectorAll('.chapter');
+const dotsEl  = document.getElementById('nav-dots');
+const mapWrap = document.getElementById('map-wrap');
+
+chapEls.forEach((_,i) => {
+  const r = document.createElement('button'); r.className='dot-row';
+  r.innerHTML=`<span class="dot-pip"></span><span class="dot-lbl">${NAV_LABELS[i]}</span>`;
+  r.onclick = () => chapEls[i].scrollIntoView({ behavior:'smooth', block:'center' });
+  dotsEl.appendChild(r);
+});
+
+function activateDot(i) {
+  dotsEl.querySelectorAll('.dot-row').forEach((r,j)=>r.classList.toggle('active',j===i));
+}
+
+let cur = -1;
+const chapObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    const isPanel = e.target.classList.contains('panel-chapter') || e.target.classList.contains('img-chapter');
+    if (!isPanel) e.target.classList.toggle('active', e.isIntersecting);
+    if (!e.isIntersecting) return;
+    const i = +e.target.dataset.i;
+    if (i===cur) return;
+    cur=i; flyTo(i); activateDot(i);
+    mapWrap.style.opacity = isPanel ? '0.10' : '1';
+    mapWrap.style.transition = 'opacity 0.7s ease';
+  });
+}, { threshold:0.25 });
+chapEls.forEach(el => chapObs.observe(el));
+
+new IntersectionObserver(([e]) => {
+  dotsEl.classList.toggle('on', e.isIntersecting);
+}, { threshold:0.05 }).observe(document.getElementById('scrolly'));
+
+/* ── ArcGIS lazy ────────────────────────────────── */
+const frame = document.getElementById('arcgis-frame');
+const loader = document.getElementById('scene-loader');
+let loaded = false;
+new IntersectionObserver(([e]) => {
+  if (!e.isIntersecting||loaded) return;
+  loaded=true;
+  frame.src='https://geoniteroi.maps.arcgis.com/apps/instant/3dviewer/index.html?appid=831fbd73f1c24248a5a1c88a4fec0932';
+  frame.addEventListener('load',()=>loader.classList.add('done'),{once:true});
+}, { threshold:0.2 }).observe(document.getElementById('scene-3d'));
+</script>
+</body>
+</html>
