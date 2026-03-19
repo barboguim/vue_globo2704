@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reviver Centro · GeoNiterói</title>
+
+  <!-- Nunito Sans — same family as viz.dados.rio -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,wght@0,200;0,300;0,400;0,600;0,700;1,300&display=swap" rel="stylesheet">
+
+  <!-- MapLibre GL (no API key, CARTO dark tiles) -->
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <link  href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    :root {
+      --bg:        #080c10;
+      --card-bg:   rgba(6, 10, 14, 0.84);
+      --border:    rgba(255,255,255,0.07);
+      --border-hi: rgba(255,255,255,0.14);
+      --text-hi:   #e8e4dc;
+      --text-md:   #7a7874;
+      --text-lo:   #383632;
+      --red:       #e03c1e;
+      --font:      'Nunito Sans', system-ui, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text-hi);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ══════════════════════════════════════════
+       HERO
+    ══════════════════════════════════════════ */
+    #hero {
+      position: relative;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 0 6vw 9vh;
+      overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 90% 55% at 15% 45%, rgba(224,60,30,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 80% at 85% 15%, rgba(30,80,160,0.05) 0%, transparent 55%),
+        linear-gradient(to bottom, #080c10 0%, #060a0f 100%);
+    }
+
+    /* subtle grid lines */
+    .hero-grid {
+      position: absolute; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+      background-size: 72px 72px;
+      mask-image: radial-gradient(ellipse 110% 110% at 50% 50%, black 20%, transparent 75%);
+    }
+
+    /* bottom vignette */
+    .hero-vignette {
+      position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background: linear-gradient(to top, rgba(8,12,16,1) 0%, transparent 35%);
+    }
+
+    .hero-content { position: relative; z-index: 2; }
+
+    .hero-eyebrow {
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hero-eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 28px; height: 1.5px;
+      background: var(--red);
+    }
+
+    h1.hero-title {
+      font-size: clamp(3.8rem, 9vw, 7.5rem);
+      font-weight: 200;
+      line-height: 0.92;
+      letter-spacing: -0.025em;
+      color: var(--text-hi);
+      margin-bottom: 2rem;
+    }
+    h1.hero-title strong {
+      font-weight: 700;
+      display: block;
+    }
+
+    .hero-sub {
+      font-size: 0.9rem;
+      font-weight: 300;
+      color: var(--text-md);
+      max-width: 400px;
+      line-height: 1.8;
+      margin-bottom: 2.5rem;
+    }
+
+    .scroll-cue {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-lo);
+    }
+    .scroll-line {
+      width: 36px; height: 1px;
+      background: var(--text-lo);
+      transform-origin: left;
+      animation: grow 2.2s ease-in-out infinite;
+    }
+    @keyframes grow {
+      0%,100%{ transform: scaleX(1);   opacity:.45; }
+      50%    { transform: scaleX(1.6); opacity:1;   }
+    }
+
+    /* right-side stats column */
+    .hero-stats {
+      position: absolute;
+      right: 6vw; bottom: 9vh; z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      text-align: right;
+    }
+    .hs-val {
+      font-size: 1.9rem;
+      font-weight: 200;
+      color: var(--text-hi);
+      line-height: 1;
+    }
+    .hs-lbl {
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-lo);
+      margin-top: 3px;
+    }
+
+    /* ══════════════════════════════════════════
+       SCROLLYTELLING
+    ══════════════════════════════════════════ */
+    #scrolly { position: relative; }
+
+    /* sticky map occupies full screen, sits behind chapters */
+    #map-wrap {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      width: 100%;
+      z-index: 0;
+    }
+    #map { width: 100%; height: 100%; }
+
+    /* chapters overlap the map from the top */
+    #chapters {
+      position: relative;
+      margin-top: -100vh;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .chapter {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: 2rem 2rem 2rem 5vw;
+      pointer-events: none;
+      transition: opacity .5s;
+      opacity: .25;
+    }
+    .chapter.active { opacity: 1; }
+
+    /* glass card */
+    .card {
+      pointer-events: auto;
+      width: 330px;
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.7rem 1.65rem 1.5rem;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.75);
+      position: relative;
+      overflow: hidden;
+      transition: border-color .4s;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top:0; left:0; right:0; height: 2px;
+      background: linear-gradient(90deg, var(--red) 0%, transparent 80%);
+      opacity: 0;
+      transition: opacity .5s;
+    }
+    .chapter.active .card { border-color: var(--border-hi); }
+    .chapter.active .card::before { opacity: 1; }
+
+    .card-tag {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: .65rem;
+    }
+    .card-title {
+      font-size: 1.4rem;
+      font-weight: 300;
+      line-height: 1.22;
+      color: var(--text-hi);
+      margin-bottom: .8rem;
+      letter-spacing: -.01em;
+    }
+    .card-body {
+      font-size: .815rem;
+      font-weight: 300;
+      line-height: 1.85;
+      color: var(--text-md);
+    }
+    .card-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .75rem 1.2rem;
+      margin-top: 1.15rem;
+      padding-top: 1.1rem;
+      border-top: 1px solid var(--border);
+    }
+    .cs-lbl {
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--text-lo);
+      margin-bottom: 3px;
+    }
+    .cs-val {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-hi);
+    }
+
+    /* spacer after last chapter keeps map visible */
+    #chap-end { height: 35vh; pointer-events: none; }
+
+    /* ── nav dots (right edge, fixed) ── */
+    #nav-dots {
+      position: fixed;
+      right: 1.4rem; top: 50%;
+      transform: translateY(-50%);
+      z-index: 60;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(0,0,0,0.5);
+      padding: 10px 7px;
+      border-radius: 30px;
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    #nav-dots.on { display: flex; }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      border: none; cursor: pointer;
+      transition: all .3s;
+    }
+    .dot.active { background: var(--red); transform: scale(1.6); }
+
+    /* ── HUD chip (fixed top-right) ── */
+    #hud {
+      position: fixed;
+      top: 1.2rem; right: 1.4rem;
+      z-index: 60;
+      display: none;
+    }
+    #hud.on { display: block; }
+    .hud-chip {
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.38);
+      background: rgba(0,0,0,.55);
+      border: 1px solid var(--border);
+      padding: 5px 12px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+    }
+
+    /* ══════════════════════════════════════════
+       3D ARCGIS SCENE
+    ══════════════════════════════════════════ */
+    #scene-3d {
+      position: relative;
+      height: 100vh;
+      background: #04060a;
+      overflow: hidden;
+    }
+
+    #scene-3d iframe {
+      width: 100%; height: 100%;
+      border: none; display: block;
+    }
+
+    #scene-loader {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1.4rem;
+      background: #04060a;
+      z-index: 5;
+      transition: opacity .8s ease .4s;
+    }
+    #scene-loader.done { opacity: 0; pointer-events: none; }
+
+    .spin-ring {
+      width: 38px; height: 38px;
+      border: 1.5px solid var(--border-hi);
+      border-top-color: var(--red);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .spin-lbl {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--text-lo);
+    }
+
+    /* overlay header for 3D section */
+    .scene-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      z-index: 10;
+      padding: 1.4rem 2rem;
+      background: linear-gradient(to bottom, rgba(4,6,10,.92) 0%, transparent 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+    .scene-tag {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--red);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .scene-tag::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pdot 2s ease-in-out infinite;
+    }
+    @keyframes pdot {
+      0%,100%{ opacity:1; box-shadow:0 0 0 0 rgba(224,60,30,.4); }
+      50%    { opacity:.6; box-shadow:0 0 0 6px rgba(224,60,30,0); }
+    }
+    .scene-info {
+      font-size: 10px;
+      font-weight: 300;
+      letter-spacing: .08em;
+      color: rgba(255,255,255,.3);
+    }
+
+    /* ── MapLibre chrome ── */
+    .maplibregl-ctrl-attrib { font-size: 9px !important; }
+    .maplibregl-ctrl-group {
+      background: rgba(4,6,12,.65) !important;
+      border: 1px solid var(--border) !important;
+      backdrop-filter: blur(8px);
+    }
+    .maplibregl-ctrl button { background: transparent !important; }
+    .maplibregl-ctrl button .maplibregl-ctrl-icon { filter: invert(.65); }
+
+    /* pulsing pin marker */
+    .pin {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      background: var(--red);
+      border: 2px solid rgba(255,255,255,.8);
+      box-shadow: 0 0 0 5px rgba(224,60,30,.3);
+      animation: ppulse 2.2s ease-in-out infinite;
+    }
+    @keyframes ppulse {
+      0%,100%{ box-shadow: 0 0 0 5px rgba(224,60,30,.3); }
+      50%    { box-shadow: 0 0 0 13px rgba(224,60,30,0); }
+    }
+
+    @media (max-width: 600px) {
+      .hero-stats { display: none; }
+      h1.hero-title { font-size: 3.2rem; }
+      .card { width: calc(100vw - 2.5rem); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     HERO
+══════════════════════════════════════════════════════ -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-vignette"></div>
+
+  <div class="hero-content">
+    <p class="hero-eyebrow">GeoNiterói &nbsp;·&nbsp; Análise Territorial</p>
+    <h1 class="hero-title">
+      Reviver<br>
+      <strong>Centro</strong>
+    </h1>
+    <p class="hero-sub">
+      Programa de requalificação urbana do centro histórico de Niterói.
+      Análise de lotes estratégicos e áreas de intervenção prioritária.
+    </p>
+    <div class="scroll-cue">
+      <span class="scroll-line"></span>
+      Explorar análise
+    </div>
+  </div>
+
+  <div class="hero-stats">
+    <div><p class="hs-val">47</p><p class="hs-lbl">Lotes mapeados</p></div>
+    <div><p class="hs-val">12,4 ha</p><p class="hs-lbl">Área total</p></div>
+    <div><p class="hs-val">2024</p><p class="hs-lbl">Ano base</p></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SCROLLYTELLING MAP
+══════════════════════════════════════════════════════ -->
+<section id="scrolly">
+
+  <!-- sticky full-screen map — z-index 0, sits behind cards -->
+  <div id="map-wrap">
+    <div id="map"></div>
+  </div>
+
+  <!-- chapter cards scroll over the map -->
+  <div id="chapters">
+
+    <div class="chapter" data-i="0">
+      <div class="card">
+        <p class="card-tag">Visão Geral</p>
+        <h2 class="card-title">Polígono de Análise — Itaipu</h2>
+        <p class="card-body">
+          O polígono central de Itaipu concentra os lotes estratégicos selecionados
+          para a nova política de zoneamento. A análise considera densidade,
+          uso do solo, cobertura vegetal e conectividade viária.
+        </p>
+        <div class="card-stats">
+          <div><p class="cs-lbl">Área total</p><p class="cs-val">12,4 ha</p></div>
+          <div><p class="cs-lbl">Lotes</p><p class="cs-val">47</p></div>
+          <div><p class="cs-lbl">Uso</p><p class="cs-val">Residencial</p></div>
+          <div><p class="cs-lbl">Ano base</p><p class="cs-val">2024</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chapter" data-i="1">
+      <div class="card">
+        <p class="card-tag">Setor Norte · Lote 27</p>
+        <h2 class="card-title">Quadra 15 — Rua A. N. Cottas</h2>
+        <p class="card-body">
+          Imóvel com taxa de ocupação de 65% e coeficiente de aproveitamento 1,8.
+          Ponto focal para adensamento controlado conforme as diretrizes do PDU.
+          Recuo frontal de 5m assegura permeabilidade visual com a via pública.
+        </p>
+        <div class="card-stats">
+          <div><p class="cs-lbl">Área do lote</p><p class="cs-val">450 m²</p></div>
+          <div><p class="cs-lbl">Recuo frontal</p><p class="cs-val">5 m</p></div>
+          <div><p class="cs-lbl">Taxa de ocupação</p><p class="cs-val">65%</p></div>
+          <div><p class="cs-lbl">Coef. aprov.</p><p class="cs-val">1,8</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chapter" data-i="2">
+      <div class="card">
+        <p class="card-tag">Conectividade</p>
+        <h2 class="card-title">Vetor — Est. Francisco da Cruz Nunes</h2>
+        <p class="card-body">
+          Principal eixo de mobilidade da área. A cobertura vegetal nos fundos
+          dos lotes é um ativo ambiental estratégico a preservar nas
+          próximas intervenções urbanísticas.
+        </p>
+        <div class="card-stats">
+          <div><p class="cs-lbl">Cobertura vegetal</p><p class="cs-val">38%</p></div>
+          <div><p class="cs-lbl">APP identificada</p><p class="cs-val">2,1 ha</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="chap-end"></div>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     3D ARCGIS SCENE
+══════════════════════════════════════════════════════ -->
+<section id="scene-3d">
+
+  <div id="scene-loader">
+    <div class="spin-ring"></div>
+    <p class="spin-lbl">Carregando cena 3D</p>
+  </div>
+
+  <div class="scene-bar">
+    <span class="scene-tag">Cena 3D · ArcGIS Scene Viewer</span>
+    <span class="scene-info">GeoNiterói — Extrusão volumétrica por gabarito real</span>
+  </div>
+
+  <iframe id="arcgis-frame" allowfullscreen allow="geolocation"
+          title="Visualização 3D GeoNiterói"></iframe>
+
+</section>
+
+<!-- Fixed chrome -->
+<div id="nav-dots"></div>
+<div id="hud"><div class="hud-chip">Mapa interativo</div></div>
+
+<!-- ══════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════ -->
+<script>
+
+const CHAPTERS = [
+  {
+    center:  [-43.0315, -22.9555],
+    zoom:    14.8,
+    pitch:   36,
+    bearing: 0,
+    marker:  null
+  },
+  {
+    center:  [-43.0330, -22.9545],
+    zoom:    18.4,
+    pitch:   62,
+    bearing: -22,
+    marker:  [-43.0330, -22.9545]
+  },
+  {
+    center:  [-43.0295, -22.9538],
+    zoom:    14.5,
+    pitch:   26,
+    bearing: 10,
+    marker:  null
+  }
+];
+
+/* ── Map ───────────────────────────────────── */
+const map = new maplibregl.Map({
+  container: 'map',
+  style:     'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  center:    CHAPTERS[0].center,
+  zoom:      CHAPTERS[0].zoom,
+  pitch:     CHAPTERS[0].pitch,
+  bearing:   0,
+  antialias: true
+});
+map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right');
+
+let pin = null;
+function setPin(lngLat) {
+  if (pin) { pin.remove(); pin = null; }
+  if (!lngLat) return;
+  const el = document.createElement('div');
+  el.className = 'pin';
+  pin = new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
+}
+
+let flyTimer = null;
+function flyTo(i) {
+  clearTimeout(flyTimer);
+  flyTimer = setTimeout(() => {
+    const c = CHAPTERS[i];
+    map.flyTo({
+      center: c.center, zoom: c.zoom, pitch: c.pitch, bearing: c.bearing,
+      duration: 2500, essential: true,
+      easing: t => t<.5 ? 2*t*t : -1+(4-2*t)*t
+    });
+    setPin(c.marker);
+  }, 80);
+}
+
+/* ── Chapter intersection ──────────────────── */
+const chapEls = document.querySelectorAll('.chapter');
+const dotsEl  = document.getElementById('nav-dots');
+const hudEl   = document.getElementById('hud');
+
+chapEls.forEach((_, i) => {
+  const b = document.createElement('button');
+  b.className = 'dot';
+  b.title = `Capítulo ${i+1}`;
+  b.onclick = () => chapEls[i].scrollIntoView({ behavior:'smooth', block:'center' });
+  dotsEl.appendChild(b);
+});
+
+function activateDot(i) {
+  dotsEl.querySelectorAll('.dot').forEach((d,j) => d.classList.toggle('active', j===i));
+}
+
+let cur = -1;
+const chapObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    e.target.classList.toggle('active', e.isIntersecting);
+    if (!e.isIntersecting) return;
+    const i = +e.target.dataset.i;
+    if (i === cur) return;
+    cur = i;
+    flyTo(i);
+    activateDot(i);
+  });
+}, { threshold: 0.5 });
+
+chapEls.forEach(el => chapObs.observe(el));
+
+/* show/hide fixed chrome while in scrolly section */
+const scrollyObs = new IntersectionObserver(([e]) => {
+  dotsEl.classList.toggle('on', e.isIntersecting);
+  hudEl.classList.toggle('on', e.isIntersecting);
+}, { threshold: 0.05 });
+scrollyObs.observe(document.getElementById('scrolly'));
+
+/* ── Lazy-load ArcGIS iframe ───────────────── */
+const scene3d  = document.getElementById('scene-3d');
+const frame    = document.getElementById('arcgis-frame');
+const loader   = document.getElementById('scene-loader');
+let loaded = false;
+
+new IntersectionObserver(([e]) => {
+  if (!e.isIntersecting || loaded) return;
+  loaded = true;
+  frame.src = 'https://geoniteroi.maps.arcgis.com/apps/instant/3dviewer/index.html?appid=831fbd73f1c24248a5a1c88a4fec0932';
+  frame.addEventListener('load', () => loader.classList.add('done'), { once: true });
+}, { threshold: 0.2 }).observe(scene3d);
+
+</script>
+</body>
+</html>
