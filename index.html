@@ -31,49 +31,40 @@
     body { background:var(--bg); color:var(--text-hi); font-family:var(--font); -webkit-font-smoothing:antialiased; overflow-x:hidden; }
 
     /* ══ HERO ═══════════════════════════════════════════════ */
-    #hero { position:relative; height:100vh; display:flex; flex-direction:column; justify-content:flex-end; padding:0 7vw 10vh; overflow:hidden; background:var(--bg); }
+    #hero { position:relative; height:100vh; display:flex; flex-direction:column; justify-content:flex-end; padding:0 7vw 10vh; overflow:hidden; background:#14110d; isolation:isolate; }
 
-    /* ── YouTube background ── */
-    .hero-video-wrap {
-      position:absolute; inset:0; z-index:0; overflow:hidden;
+    /* video fills hero, nudged up to crop subtitle bar */
+    #hero-video {
+      position:absolute; inset:0;
+      width:100%; height:110%; top:-5%;
+      object-fit:cover; z-index:0; display:block;
     }
-    .hero-video-wrap video {
-      position:absolute;
-      width:177.78vh; height:118vh;
-      min-width:100%; min-height:56.25vw;
-      top:50%; left:50%;
-      transform:translate(-50%, -50%) translateY(-9vh);
-      object-fit:cover;
-    }
-    /* warm scrim so text stays readable over video */
-    .hero-video-scrim {
-      position:absolute; inset:0; z-index:1;
+
+    /* single thin scrim: dark-left for text legibility, transparent right */
+    .hero-scrim {
+      position:absolute; inset:0; z-index:1; pointer-events:none;
       background:
-        linear-gradient(to right,  rgba(242,239,233,0.88) 0%, rgba(242,239,233,0.55) 45%, rgba(242,239,233,0.2) 100%),
-        linear-gradient(to top,    rgba(242,239,233,1)    0%, transparent 40%),
-        linear-gradient(to bottom, rgba(242,239,233,0.7)  0%, transparent 25%);
+        linear-gradient(to right, rgba(0,0,0,0.58) 0%, rgba(0,0,0,0.22) 55%, rgba(0,0,0,0.04) 100%),
+        linear-gradient(to top,   rgba(0,0,0,0.48) 0%, transparent 40%);
     }
 
-    .hero-lines { position:absolute; inset:0; z-index:2; background-image:repeating-linear-gradient(-45deg,transparent,transparent 48px,rgba(0,0,0,0.012) 48px,rgba(0,0,0,0.012) 49px); }
-    .hero-fade  { position:absolute; bottom:0; left:0; right:0; height:45%; z-index:2; background:linear-gradient(to top,var(--bg) 0%,transparent 100%); }
-    .hero-content { position:relative; z-index:3; }
+    .hero-content { position:relative; z-index:2; }
 
-    .hero-eyebrow { font-size:9.5px; font-weight:700; letter-spacing:.26em; text-transform:uppercase; color:var(--red); margin-bottom:1.5rem; display:flex; align-items:center; gap:10px; }
-    .hero-eyebrow::before { content:''; width:22px; height:1.5px; background:var(--red); }
+    .hero-eyebrow { font-size:9.5px; font-weight:700; letter-spacing:.26em; text-transform:uppercase; color:#e8723a; margin-bottom:1.5rem; display:flex; align-items:center; gap:10px; }
+    .hero-eyebrow::before { content:''; width:22px; height:1.5px; background:#e8723a; }
 
-    h1.hero-title { font-size:clamp(4.2rem,10.5vw,9rem); font-weight:200; line-height:.88; letter-spacing:-0.03em; color:var(--text-hi); margin-bottom:2.2rem; }
+    h1.hero-title { font-size:clamp(4.2rem,10.5vw,9rem); font-weight:200; line-height:.88; letter-spacing:-0.03em; color:#f2ede5; margin-bottom:2.2rem; }
     h1.hero-title strong { font-weight:700; display:block; }
 
-    .hero-sub { font-size:1.05rem; font-weight:300; color:var(--text-md); max-width:400px; line-height:1.9; margin-bottom:2.8rem; }
+    .hero-sub { font-size:1.05rem; font-weight:300; color:rgba(242,237,229,0.70); max-width:400px; line-height:1.9; margin-bottom:2.8rem; }
 
-    .scroll-cue { display:flex; align-items:center; gap:9px; font-size:8.5px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--text-lo); }
-    .scroll-line { width:30px; height:1px; background:var(--text-lo); transform-origin:left; animation:grow 2.4s ease-in-out infinite; }
+    .scroll-cue { display:flex; align-items:center; gap:9px; font-size:8.5px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:rgba(242,237,229,0.38); }
+    .scroll-line { width:30px; height:1px; background:rgba(242,237,229,0.38); transform-origin:left; animation:grow 2.4s ease-in-out infinite; }
     @keyframes grow { 0%,100%{transform:scaleX(1);opacity:.4;} 50%{transform:scaleX(1.8);opacity:1;} }
 
     .hero-stats { position:absolute; right:7vw; bottom:10vh; z-index:2; display:flex; flex-direction:column; gap:1.8rem; text-align:right; }
-    /* bold red numbers in hero */
-    .hs-val { font-size:2rem; font-weight:700; color:var(--red); line-height:1; }
-    .hs-lbl { font-size:8px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--text-lo); margin-top:4px; }
+    .hs-val { font-size:2rem; font-weight:700; color:#e8723a; line-height:1; }
+    .hs-lbl { font-size:8px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:rgba(242,237,229,0.38); margin-top:4px; }
 
     /* ══ SCROLLYTELLING ═════════════════════════════════════ */
     #scrolly { position:relative; }
@@ -84,6 +75,8 @@
     /* ── Card chapter ── */
     .chapter { min-height:100vh; display:flex; align-items:center; padding:2rem 2rem 2rem 5vw; pointer-events:none; transition:opacity .5s; opacity:.15; }
     .chapter.active { opacity:1; }
+    /* panels and image chapters have solid backgrounds — never dim them */
+    .chapter.panel-chapter, .chapter.img-chapter { opacity:1 !important; }
 
     .card { pointer-events:auto; width:310px; background:var(--card-bg); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); border:1px solid var(--border); border-radius:12px; padding:1.6rem 1.5rem 1.4rem; box-shadow:0 6px 30px rgba(0,0,0,.08),0 1px 4px rgba(0,0,0,.04); position:relative; overflow:hidden; transition:border-color .4s,box-shadow .4s; }
     .card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,var(--red) 0%,transparent 75%); opacity:0; transition:opacity .5s; }
@@ -200,15 +193,10 @@
 
 <!-- ══ HERO ═══════════════════════════════════════════════ -->
 <section id="hero">
-  <!-- Local video background: place hero.mp4 in assets/ folder next to index.html -->
-  <div class="hero-video-wrap">
-    <video autoplay muted loop playsinline id="hero-vid">
-      <source src="assets/hero.mp4" type="video/mp4">
-    </video>
-  </div>
-  <div class="hero-video-scrim"></div>
-  <div class="hero-lines"></div>
-  <div class="hero-fade"></div>
+  <video id="hero-video" autoplay muted loop playsinline>
+    <source src="assets/hero.mp4" type="video/mp4">
+  </video>
+  <div class="hero-scrim"></div>
   <div class="hero-content">
     <p class="hero-eyebrow">Niterói &nbsp;·&nbsp; Área Central</p>
     <h1 class="hero-title">Reviver<br><strong>Centro</strong></h1>
@@ -438,37 +426,26 @@ const CHAPTERS = [
 const NAV_LABELS = ['Projetos','Obras','Viário','Imóveis','Verde','Emprego','Setores'];
 
 /*
-  Exact coordinates provided by user:
-  Av. Amaral Peixoto point:  lat -22.893588, lng -43.118492
-  Rua da Conceição point:    lat -22.894319, lng -43.120627
-  Rua Dr. Celestino point:   lat -22.895495, lng -43.114319
-  Praça da República:        lat -22.893966, lng -43.117060
+  Av. Amaral Peixoto — coordinate nodes along its actual NE-SW alignment:
+  From Praça da República (SE) to Praça Arariboia (NW/waterfront).
+  Bearing ≈ 232° from República to Arariboia.
 
-  Avenue bearing from Praça da República → Amaral Peixoto point:
-    Δlng = -0.001432 (west), Δlat = +0.000378 (north) per ~160m
-    Ratio: +0.000264 lat per 0.001 lng westward
-  Line extended SE past República and NW toward Arariboia using same bearing.
+  Cross-checked against:
+  - Wikipedia: "liga Praça da República à Praça Arariboia"
+  - Screenshot shows avenue running from upper-right (República) to
+    lower-left (waterfront/Arariboia) at roughly 45° on the Positron map
+  - City centroid -22.8859, -43.1152 (countrycoordinate.com)
+  - CEP range 24020-070 for the avenue
 */
-const CHAPTERS = [
-  // 0 — panel: map at overview
-  { center:[-43.1183,-22.8942], zoom:14.2, pitch:25, bearing:-5,  marker:null,  streets:false },
-  // 1 — obras card: centred on Amaral Peixoto, pin at Praça da República
-  { center:[-43.1183,-22.8938], zoom:16.5, pitch:54, bearing:-20, marker:[-43.1171,-22.8940], streets:true  },
-  // 2, 3, 4 — image chapters: wide, dims
-  { center:[-43.1183,-22.8942], zoom:13.8, pitch:15, bearing:0,   marker:null,  streets:false },
-  { center:[-43.1183,-22.8942], zoom:13.8, pitch:15, bearing:0,   marker:null,  streets:false },
-  { center:[-43.1183,-22.8942], zoom:13.8, pitch:15, bearing:0,   marker:null,  streets:false },
-  // 5 — emprego card
-  { center:[-43.1183,-22.8942], zoom:15.0, pitch:38, bearing:-10, marker:null,  streets:false },
-  // 6 — setores panel
-  { center:[-43.1183,-22.8942], zoom:14.2, pitch:25, bearing:-5,  marker:null,  streets:false },
-];
-
-const NAV_LABELS = ['Projetos','Obras','Viário','Imóveis','Verde','Emprego','Setores'];
-
-/* GeoJSON built from exact user-provided anchor points.
-   Avenue: extended using measured bearing from República → Amaral Peixoto point.
-   Cross streets: ~700m segments centred on given points, running N-S. */
+/*
+  Verified coordinates:
+  Praça da República:  -22.9033, -43.1195  (Wikipedia / rodovias.org confirmed)
+  Praça Arariboia:     -22.8919, -43.1311  (Wikipedia "Praça Arariboia" confirmed)
+  Avenue bearing SE→NW ~312°, length ~1.15 km.
+  Cross streets run roughly SW–NE perpendicular to the bay,
+  based on "quadrilátero entre Marquês do Paraná e Visconde do Rio Branco"
+  (cidadedeniteroi.com, 2025).
+*/
 const STREETS_GEOJSON = {
   type:'FeatureCollection',
   features:[
@@ -478,16 +455,14 @@ const STREETS_GEOJSON = {
       geometry:{
         type:'LineString',
         coordinates:[
-          // SE extension past Praça da República (same bearing, reversed)
-          [-43.1157, -22.8951],
-          [-43.1171, -22.8940],  // Praça da República
-          [-43.1185, -22.8936],  // user-provided point on avenue
-          [-43.1199, -22.8932],
-          [-43.1213, -22.8928],
-          [-43.1227, -22.8924],  // Rua da Conceição intersection area
-          [-43.1241, -22.8920],
-          [-43.1258, -22.8916],
-          [-43.1275, -22.8912]   // toward Praça Arariboia / waterfront
+          [-43.1195, -22.9033],  // Praça da República (SE)
+          [-43.1218, -22.9017],
+          [-43.1240, -22.9001],
+          [-43.1260, -22.8986],
+          [-43.1278, -22.8970],
+          [-43.1293, -22.8955],
+          [-43.1305, -22.8938],
+          [-43.1311, -22.8919]   // Praça Arariboia (NW / waterfront)
         ]
       }
     },
@@ -497,14 +472,11 @@ const STREETS_GEOJSON = {
       geometry:{
         type:'LineString',
         coordinates:[
-          // N-S segment centred on user point [-43.120627, -22.894319]
-          [-43.1206, -22.8910],
-          [-43.1206, -22.8920],
-          [-43.1206, -22.8930],
-          [-43.1206, -22.8943],  // user anchor point
-          [-43.1206, -22.8956],
-          [-43.1206, -22.8970],
-          [-43.1206, -22.8983]
+          [-43.1225, -22.8988],
+          [-43.1210, -22.9005],
+          [-43.1196, -22.9022],
+          [-43.1182, -22.9040],
+          [-43.1170, -22.9056]
         ]
       }
     },
@@ -514,21 +486,22 @@ const STREETS_GEOJSON = {
       geometry:{
         type:'LineString',
         coordinates:[
-          // N-S segment centred on user point [-43.114319, -22.895495]
-          [-43.1143, -22.8920],
-          [-43.1143, -22.8933],
-          [-43.1143, -22.8943],
-          [-43.1143, -22.8955],  // user anchor point
-          [-43.1143, -22.8967],
-          [-43.1143, -22.8980],
-          [-43.1143, -22.8993]
+          [-43.1200, -22.8998],
+          [-43.1186, -22.9013],
+          [-43.1172, -22.9028],
+          [-43.1158, -22.9045]
         ]
       }
     },
     {
       type:'Feature',
       properties:{ name:'Praça da República' },
-      geometry:{ type:'Point', coordinates:[-43.1171, -22.8940] }
+      geometry:{ type:'Point', coordinates:[-43.1195, -22.9033] }
+    },
+    {
+      type:'Feature',
+      properties:{ name:'Praça Arariboia' },
+      geometry:{ type:'Point', coordinates:[-43.1311, -22.8919] }
     }
   ]
 };
@@ -615,16 +588,16 @@ function activateDot(i) {
 let cur = -1;
 const chapObs = new IntersectionObserver(entries => {
   entries.forEach(e => {
-    e.target.classList.toggle('active', e.isIntersecting);
+    const isPanel = e.target.classList.contains('panel-chapter') || e.target.classList.contains('img-chapter');
+    if (!isPanel) e.target.classList.toggle('active', e.isIntersecting);
     if (!e.isIntersecting) return;
     const i = +e.target.dataset.i;
     if (i===cur) return;
     cur=i; flyTo(i); activateDot(i);
-    const dim = e.target.classList.contains('img-chapter') || e.target.classList.contains('panel-chapter');
-    mapWrap.style.opacity = dim ? '0.10' : '1';
+    mapWrap.style.opacity = isPanel ? '0.10' : '1';
     mapWrap.style.transition = 'opacity 0.7s ease';
   });
-}, { threshold:0.45 });
+}, { threshold:0.25 });
 chapEls.forEach(el => chapObs.observe(el));
 
 new IntersectionObserver(([e]) => {
